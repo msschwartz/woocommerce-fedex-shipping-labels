@@ -4,3 +4,15 @@
   content: "\e019";
   font-size: 1.3em !important;
 }
+
+
+.label-status {
+  display: inline-block;
+  padding: 5px 10px;
+} 
+.label-status.label-status-generated {
+  background-color: #88ff88;
+}
+.label-status.label-status-empty {
+  background-color: #ff8888;
+}

@@ -23,7 +23,7 @@ if ( ! in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins',
 	return;
 }
 
-require_once 'lib/class-wc-fedex-shipping-labels-admin.php';
+require_once 'classes/class-wc-fedex-shipping-labels-admin.php';
 require_once 'lib/FedEx/fedex-shipping-label-service.php';
 require_once 'lib/class-woocommerce-order-shipping-label.php';
 
@@ -45,6 +45,8 @@ class WC_FedEx_Shipping_Labels {
 	 * Set up the class, including it's hooks & filters, when the file is loaded.
 	 */
 	public static function init() {
+		$wcFedexShippingLabelsAdmin = new WC_FedEx_Shipping_Labels_Admin();
+		
 		add_action( 'admin_enqueue_scripts', __CLASS__ . '::admin_enqueue_scripts' );
 		add_action( 'admin_footer', __CLASS__ . '::woocommerce_bulk_admin_footer' );
 		add_action( 'load-edit.php', __CLASS__ . '::woocommerce_order_bulk_action_download' );
@@ -298,7 +300,7 @@ class WC_FedEx_Shipping_Labels {
 	
 	// custom email when admin changes customer's shipping address
 	public static function add_wc_shipping_address_changed_email( $email_classes ) {
-		require_once 'lib/class-wc-shipping-address-changed-email.php';
+		require_once 'classes/class-wc-shipping-address-changed-email.php';
     $email_classes['WC_Shipping_Address_Changed_Email'] = new WC_Shipping_Address_Changed_Email();
     return $email_classes;
 	}
