@@ -45,6 +45,7 @@ class WC_FedEx_Shipping_Labels {
 	 * Set up the class, including it's hooks & filters, when the file is loaded.
 	 */
 	public static function init() {
+		add_action( 'admin_enqueue_scripts', __CLASS__ . '::admin_enqueue_scripts' );
 		add_action( 'admin_footer', __CLASS__ . '::woocommerce_bulk_admin_footer' );
 		add_action( 'load-edit.php', __CLASS__ . '::woocommerce_order_bulk_action_download' );
 		add_action( 'load-edit.php', __CLASS__ . '::woocommerce_order_bulk_action_generate' );
@@ -72,6 +73,11 @@ class WC_FedEx_Shipping_Labels {
 		// custom shipping address changed email
 		add_filter( 'woocommerce_email_classes', __CLASS__ . '::add_wc_shipping_address_changed_email' );
 		add_action( 'woocommerce_order_action_send_shipping_address_changed_email', __CLASS__ . '::order_action_send_shipping_address_changed_email' );
+	}
+	
+	
+	public static function admin_enqueue_scripts() {
+		wp_enqueue_style( __CLASS__ . '::name' . '-css', WCFSL_BASE_URL . '/css/fedex-shipping-labels.css' );
 	}
 
 

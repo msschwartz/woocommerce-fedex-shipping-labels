@@ -23,22 +23,36 @@ class WC_FedEx_Shipping_Label_Admin {
 	 * Bootstraps the class and hooks required actions & filters.
 	 */
 	public static function init() {
-		add_filter( 'woocommerce_settings_tabs_array', __CLASS__ . '::add_fedex_shipping_labels_settings_tab' );
+		add_action( 'admin_menu', __CLASS__ . '::add_menu_item' );
 
 		add_action( 'woocommerce_settings_tabs_fedex_shipping_labels', __CLASS__ . '::fedex_shipping_labels_settings_page' );
 
 		add_action( 'woocommerce_update_options_' . self::$tab_name, __CLASS__ . '::update_fedex_shipping_labels_settings' );
 	}
+	
+	
+	public static function add_menu_item() {
+    add_menu_page(
+      'Fedex Shipping',
+      'Fedex Shipping',
+      'edit_plugins',
+      'fedex-shipping-labels',
+      null,
+      null,
+      58
+    );
+  }
+	
 
 	/**
 	 * Add the FedEx Shipping Labels settings tab to the WooCommerce settings tabs array.
 	 *
-	 * @param array $settings_tabs Array of WooCommerce setting tabs & their labels, excluding the FedEx Shipping Labels tab.
-	 * @return array $settings_tabs Array of WooCommerce setting tabs & their labels, including the FedEx Shipping Labels tab.
+	 * @param array $settings_tabs Array of WooCommerce setting tabs & their labels, excluding the FedEx Shipping tab.
+	 * @return array $settings_tabs Array of WooCommerce setting tabs & their labels, including the FedEx Shipping tab.
 	 */
 	public static function add_fedex_shipping_labels_settings_tab( $settings_tabs ) {
 
-		$settings_tabs[self::$tab_name] = 'FedEx Shipping Labels';
+		$settings_tabs[self::$tab_name] = 'FedEx Shipping';
 
 		return $settings_tabs;
 	}

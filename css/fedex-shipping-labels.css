@@ -1,0 +1,6 @@
+
+#adminmenu #toplevel_page_fedex-shipping-labels .menu-icon-generic div.wp-menu-image:before {
+  font-family: WooCommerce !important;
+  content: "\e019";
+  font-size: 1.3em !important;
+}
