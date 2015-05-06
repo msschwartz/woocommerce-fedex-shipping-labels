@@ -31,25 +31,102 @@ jQuery(document).ready( function() {
       return;
     }
     
-    showStatusModal('Generating shipping labels. Please wait...');
-    generateLabels( orderIds, function() {
-      addStatusText('done! Reloading page');
+    statusModal.show('Generating shipping labels. Please wait...');
+    labelGenerator.init( orderIds, function() {
+      statusModal.addText('done! Reloading page');
       location.reload();
     });
+    labelGenerator.doit();
   });
   
   jQuery('#print-shipping-labels').click( function(e) {
     e.preventDefault();
-    showStatusModal('Printing shipping labels...');
+    statusModal.show('Printing shipping labels...');
   });
   
   jQuery('#mark-orders-complete').click( function(e) {
     e.preventDefault();
-    showStatusModal('Marking orders complete...');
+    statusModal.show('Marking orders complete...');
   });
   
+});
+
+
+var labelGenerator = {
   
-  function showStatusModal(statusText) {
+  queueName: 'generateLabels',
+  ajaxAction: 'generate_shipping_label',
+  isBusy: false,
+  orderIds: [],
+  completedJobsCounter: 0,
+  sequentialWorkers: 3, // how many workers do we use
+  callback: null,
+  
+  init: function(orderIds, callback) {
+    if (this.isBusy) return;
+    this.orderIds = orderIds;
+    this.callback = callback;
+  },
+  
+  doit: function() {
+    if (this.isBusy) return;
+    if ( this.orderIds.length < 1 ) {
+      this.__doCallback();
+      return;
+    }
+    
+    this.isBusy = true;
+    this.completedJobsCounter = 0;
+    
+    // add all jobs
+    for (var i = 0; i < this.orderIds.length; i++) {
+      this.__addJob(this.orderIds[i]);
+    }
+    
+    // start queue processing
+    for (var i = 0; (i < this.sequentialWorkers && i < this.orderIds.length); i++) {
+      jQuery(document).dequeue(this.queueName);
+    }
+  },
+  
+  __addJob: function(orderId) {
+    var THIS = this;
+    var data = {
+      action: this.ajaxAction,
+      order_id: orderId
+    };
+    jQuery(document).queue(this.queueName, function() {
+      jQuery.post(wcfsl.ajaxurl, data, function( response ) {
+        THIS.__jobCompleted(response);
+      });
+    });
+  },
+  
+  
+  __jobCompleted: function(response) {
+    statusModal.addText('.');
+    this.completedJobsCounter++;
+    if ( jQuery(document).queue(this.queueName).length > 0 ) {
+      jQuery(document).dequeue(this.queueName);
+    }
+    else if (this.completedJobsCounter == this.orderIds.length) {
+      this.__doCallback();
+      this.isBusy = false;
+    }
+  },
+  
+  __doCallback: function() {
+    if (this.callback) {
+      this.callback();
+    }
+  },
+  
+};
+
+
+var statusModal = {
+  
+  show: function(statusText) {
     var backdrop = jQuery('<div></div>');
     backdrop.addClass('wcfsl-backdrop');
     jQuery('body').append(backdrop);
@@ -58,49 +135,17 @@ jQuery(document).ready( function() {
     modal.addClass('wcfsl-modal');
     modal.html(statusText);
     jQuery('body').append(modal);
-  }
+  },
   
   
-  function addStatusText(text) {
+  addText: function(text) {
     jQuery('.wcfsl-modal').append(text);
-  }
+  },
   
   
-  function closeStatusModal() {
+  close: function() {
     jQuery('.wcfsl-modal').remove();
     jQuery('.wcfsl-backdrop').remove();
-  }
+  },
   
-  
-  // sequential ajax requests using jQuery queue
-  function generateLabels( orderIds, callback ) {
-    var queueName = 'generateLabels';
-    for (var i = 0; i < orderIds.length; i++) {
-      addGenerateLabelJob( orderIds[i], callback );
-    }
-    jQuery(document).dequeue(queueName);
-  }
-  
-  
-  function addGenerateLabelJob( orderId, callback ) {
-    var queueName = 'generateLabels';
-    var data = {
-      action: 'generate_shipping_label',
-      order_id: orderId
-    };
-    jQuery(document).queue(queueName, function() {
-      jQuery.post(wcfsl.ajaxurl, data, function( response ) {
-        console.log(response);
-        addStatusText('.');
-        if ( jQuery(document).queue(queueName).length == 0 ) {
-          callback();
-        }
-        else {
-          jQuery(document).dequeue(queueName);
-        }
-      });
-    });
-  }
-  
-  
-});
+};
