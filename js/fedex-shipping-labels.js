@@ -2,22 +2,23 @@
 jQuery(document).ready( function() {
   
   // date pickers
-  jQuery('.wcfsl input[name="start_date"], .wcfsl input[name="end_date"]').datepicker({dateFormat: "yy-mm-dd"});
+  jQuery('#wcfsl-admin input[name="start_date"], #wcfsl-admin input[name="end_date"]').datepicker({dateFormat: "yy-mm-dd"});
   
   // checking status of printer service
-  jQuery.ajax( 'http://localhost:8080/status' ).done(function(response) {
-    if ( response == 'ready' ) {
-      jQuery('#printer_status').html('Ready');
-    }
-    else {
-      jQuery('#printer_status').html('Invalid Response');
-      alert( 'Received an invalid response from port 8080' );
-    }
-  }).fail(function() {
-    jQuery('#printer_status').html('Not Ready');
-    alert( 'Printer service not found, please make sure it\'s running' );
-  });
-  
+  if ( jQuery('#wcfsl-admin').length > 0 ) {
+    jQuery.ajax( 'http://localhost:8080/status' ).done(function(response) {
+      if ( response == 'ready' ) {
+        jQuery('#printer_status').html('Ready');
+      }
+      else {
+        jQuery('#printer_status').html('Invalid Response');
+        alert( 'Received an invalid response from port 8080' );
+      }
+    }).fail(function() {
+      jQuery('#printer_status').html('Not Ready');
+      alert( 'Printer service not found, please make sure it\'s running' );
+    });
+  }
   
   // Generate shipping labels handler
   jQuery('#generate-shipping-labels').click( function(e) {

@@ -1,4 +1,4 @@
-<div class="wrap wcfsl">
+<div id="wcfsl-admin" class="wrap">
   <div style="float:right">
     <button class="button" id="generate-shipping-labels">Generate Shipping Labels</button>
     <button class="button" id="print-shipping-labels">Print Shipping Labels</button>
