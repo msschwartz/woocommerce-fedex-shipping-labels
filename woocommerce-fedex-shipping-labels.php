@@ -51,10 +51,13 @@ class WC_FedEx_Shipping_Labels {
 		add_action( 'woocommerce_email_after_order_table', __CLASS__ . '::woocommerce_email_after_order_table' );
 		
 		// adding message to edit address page
-		add_action( 'woocommerce_before_template_part', __CLASS__ . '::maybe_add_message_to_edit_address_page' );
+		add_action( 'woocommerce_before_edit_address_form_shipping', __CLASS__ . '::woocommerce_before_edit_address_form_shipping' );
 		
 		// add note about chanding shipping address under shipping address inside order details
 		add_action( 'woocommerce_admin_order_data_after_shipping_address', __CLASS__ . '::woocommerce_admin_order_data_after_shipping_address' );
+		
+		// update pending orders when user edits a subscriptions shipping address
+		add_action( 'woocommerce_customer_save_address', __CLASS__ . '::maybe_update_subscription_order_addresses', 11, 3 );
 		
 		// validate shipping state
 		add_action( 'woocommerce_after_checkout_validation', __CLASS__ . '::woocommerce_after_checkout_validation');
@@ -72,19 +75,11 @@ class WC_FedEx_Shipping_Labels {
 	}
 	
 	
-	// After a user updates their address, generate a new shipping labels for pending orders.
-	public static function maybe_add_message_to_edit_address_page( $template_name ) {
-		if ( 'myaccount/form-edit-address.php' === $template_name ) {
-			if ( isset( $_GET['subscription'] ) ) {
-				echo '<p><em><strong>Note:</strong> Editing the shipping address on a subscription will only affect 
-					future renewal orders. If you would like an existing renewal order to use 
-					the new address, please contact support.</em></p>';
-			}
-			else {
-				echo '<p><em><strong>Note:</strong> Editing your shipping address will only affect 
-					future orders. If you would like an existing order to use the new address, 
-					please contact support.</em></p>';
-			}
+	// Add note to the edit shipping address page.
+	public static function woocommerce_before_edit_address_form_shipping( $template_name ) {
+		if ( ! isset( $_GET['subscription'] ) ) {
+			echo '<p><em><strong>Note:</strong> Editing your shipping address will only affect 
+				future orders. If you would like to change an existing order, please contact support.</em></p>';
 		}
 	}
 	
@@ -113,6 +108,92 @@ class WC_FedEx_Shipping_Labels {
 		echo '<p><em>Note: If you are updating the shipping address on a subscription, 
 			you must update the "Initial Order" if all future orders should use the new address.</em></p>';
 	}
+	
+	
+	
+	// If user changes a subscription shipping address and an existing order is pending
+	// update that order's shipping address.
+	public function maybe_update_subscription_order_addresses( $user_id, $load_address ) {
+		global $woocommerce, $wp;
+
+		if ( ! WC_Subscriptions_Manager::user_has_subscription( $user_id ) ) {
+			return;
+		}
+		
+		if ( $load_address != 'shipping' ) {
+			return;
+		}
+
+		$subscription_ids = array();
+		
+		if ( isset( $_POST['update_all_subscriptions_addresses'] ) ) {
+
+			$users_subscriptions = WC_Subscriptions_Manager::get_users_subscriptions( $user_id );
+
+			foreach ( $users_subscriptions as $subscription ) {
+				array_push( $subscription_ids, $subscription['order_id'] );
+			}
+
+		} elseif ( isset( $_POST['update_subscription_address'] ) ) {
+
+			$subscription = WC_Subscriptions_Manager::get_subscription( $_POST['update_subscription_address'] );
+
+			// Update the address only if the user actually owns the subscription
+			if ( ! empty( $subscription ) ) {
+				array_push( $subscription_ids, $subscription['order_id'] );
+			}
+
+		}
+		
+		if ( count( $subscription_ids ) > 0 ) {
+			
+			$base_order = $order = wc_get_order( $subscription_ids[0] );
+		
+			$args = array(
+				'numberposts' => -1,
+				'post_type' => 'shop_order',
+				'post_status' => 'publish',
+				'tax_query' => array(
+					array(
+						'taxonomy' => 'shop_order_status',
+						'field' => 'slug',
+						'terms' => array('processing')
+					),
+				),
+				'meta_query' => array(
+					array(
+						'key'     => '_customer_user',
+						'value'   => $user_id,
+					),
+					array(
+						'key'     => '_original_order',
+						'value'   => $subscription_ids,
+					),
+				),
+			);
+			$posts = get_posts( $args );
+			
+			$address = array(
+				'first_name' => $base_order->shipping_first_name,
+				'last_name' => $base_order->shipping_last_name,
+				'address_1' => $base_order->shipping_address_1,
+				'address_2' => $base_order->shipping_address_2,
+				'city' => $base_order->shipping_city,
+				'state' => $base_order->shipping_state,
+				'postcode' => $base_order->shipping_postcode,
+				'country' => $base_order->shipping_country,
+			);
+			
+			foreach ($posts as $post) {
+				$order = wc_get_order( $post->ID );
+				$order->set_address( $address, 'shipping' );
+			}
+			
+		}
+		
+		
+	}
+	
 	
 	
 	// Check if user entered valid shipping state
