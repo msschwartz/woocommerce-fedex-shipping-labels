@@ -75,6 +75,8 @@ class WC_FedEx_Shipping_Labels {
 		// custom shipping address changed email
 		add_filter( 'woocommerce_email_classes', __CLASS__ . '::add_wc_shipping_address_changed_email' );
 		add_action( 'woocommerce_order_action_send_shipping_address_changed_email', __CLASS__ . '::order_action_send_shipping_address_changed_email' );
+		
+		add_action( 'wp_ajax_generate_shipping_label', __CLASS__ . '::wp_ajax_generate_shipping_label' );
 	}
 	
 	
@@ -311,6 +313,22 @@ class WC_FedEx_Shipping_Labels {
 		$mails = $mailer->get_emails();
     $mail = $mails['WC_Shipping_Address_Changed_Email'];
     $mail->trigger( $order );
+	}
+	
+	
+	
+	public static function wp_ajax_generate_shipping_label() {
+		error_log($_POST['order_id']);
+		$order = new WC_Order( $_POST['order_id'] );
+		if ( $order ) {
+			$order_label = new WC_Order_Shipping_Label( $order );
+			if ( $order_label->generate_label() ) {
+				wp_send_json( true );
+				wp_die();
+			}
+		}
+		wp_send_json( false );
+		wp_die();
 	}
 	
 	

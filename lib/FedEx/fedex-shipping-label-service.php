@@ -21,24 +21,18 @@ class FedEx_Shipping_Label_Service {
 	}
 
 	private function init_settings() {
-		$test_mode = get_option( WC_FedEx_Shipping_Label_Admin::$option_prefix . '_api_test_mode' );
-
-		if ( $test_mode == "yes" ) {
-			$this->wsdl = self::WSDL_TESTING;
-			$this->api_key = get_option( WC_FedEx_Shipping_Label_Admin::$option_prefix . '_test_api_key' );
-			$this->api_password = get_option( WC_FedEx_Shipping_Label_Admin::$option_prefix . '_test_api_password' );
-			$this->api_meter_number = get_option( WC_FedEx_Shipping_Label_Admin::$option_prefix . '_test_api_meter_number' );
-			$this->api_account_number = get_option( WC_FedEx_Shipping_Label_Admin::$option_prefix . '_test_api_account_number' );
-			$this->hub_id = "5531";
+		if ( ENVIRONMENT == 'production' ) {
+			$this->wsdl = self::WSDL_PRODUCTION;
 		}
 		else {
-			$this->wsdl = self::WSDL_PRODUCTION;
-			$this->api_key = get_option( WC_FedEx_Shipping_Label_Admin::$option_prefix . '_api_key' );
-			$this->api_password = get_option( WC_FedEx_Shipping_Label_Admin::$option_prefix . '_api_password' );
-			$this->api_meter_number = get_option( WC_FedEx_Shipping_Label_Admin::$option_prefix . '_api_meter_number' );
-			$this->api_account_number = get_option( WC_FedEx_Shipping_Label_Admin::$option_prefix . '_api_account_number' );
-			$this->hub_id = "5436";
+			$this->wsdl = self::WSDL_TESTING;
 		}
+		
+		$this->api_key = FEDEX_API_KEY;
+		$this->api_password = FEDEX_API_PASSWORD;
+		$this->api_meter_number = FEDEX_METER_NUMBER;
+		$this->api_account_number = FEDEX_ACCOUNT_NUMBER;
+		$this->hub_id = FEDEX_SMART_POST_HUB_ID;
 	}
 
 	/*
@@ -86,7 +80,7 @@ class FedEx_Shipping_Label_Service {
 					$request = $this->create_request($order, $product);
 					
 					// send request object to FedEx web service
-					$response = $client->processShipment( $request ); 
+					$response = $client->processShipment( $request );
 					
 					// was request successful?
 					if ($response->HighestSeverity != 'FAILURE' && $response->HighestSeverity != 'ERROR') {
@@ -173,16 +167,16 @@ class FedEx_Shipping_Label_Service {
 	private function get_shipper() {
 		$shipper = array(
 			'Contact' => array(
-				'PersonName' => get_option(WC_FedEx_Shipping_Label_Admin::$option_prefix . '_shipper_person_name'),
-				'CompanyName' => get_option(WC_FedEx_Shipping_Label_Admin::$option_prefix . '_shipper_company_name'),
-				'PhoneNumber' => get_option(WC_FedEx_Shipping_Label_Admin::$option_prefix . '_shipper_phone_number')
+				'PersonName' => FEDEX_SHIPPER_PERSON_NAME,
+				'CompanyName' => FEDEX_SHIPPER_COMPANY_NAME,
+				'PhoneNumber' => FEDEX_SHIPPER_PHONE_NUMBER
 			),
 			'Address' => array(
-				'StreetLines' => array(get_option(WC_FedEx_Shipping_Label_Admin::$option_prefix . '_shipper_address1'), get_option(WC_FedEx_Shipping_Label_Admin::$option_prefix . '_shipper_address2')),
-				'City' => get_option(WC_FedEx_Shipping_Label_Admin::$option_prefix . '_shipper_city'),
-				'StateOrProvinceCode' => get_option(WC_FedEx_Shipping_Label_Admin::$option_prefix . '_shipper_state'),
-				'PostalCode' => get_option(WC_FedEx_Shipping_Label_Admin::$option_prefix . '_shipper_postal'),
-				'CountryCode' => get_option(WC_FedEx_Shipping_Label_Admin::$option_prefix . '_shipper_country')
+				'StreetLines' => array(FEDEX_SHIPPER_ADDRESS_1, FEDEX_SHIPPER_ADDRESS_2),
+				'City' => FEDEX_SHIPPER_CITY,
+				'StateOrProvinceCode' => FEDEX_SHIPPER_STATE,
+				'PostalCode' => FEDEX_SHIPPER_POSTAL,
+				'CountryCode' => FEDEX_SHIPPER_COUNTRY
 			)
 		);
 		return $shipper;
