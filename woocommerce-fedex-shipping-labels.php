@@ -77,6 +77,7 @@ class WC_FedEx_Shipping_Labels {
 		add_action( 'woocommerce_order_action_send_shipping_address_changed_email', __CLASS__ . '::order_action_send_shipping_address_changed_email' );
 		
 		add_action( 'wp_ajax_generate_shipping_label', __CLASS__ . '::wp_ajax_generate_shipping_label' );
+		add_action( 'wp_ajax_get_label_print_commands', __CLASS__ . '::wp_ajax_get_label_print_commands' );
 		add_action( 'wp_ajax_mark_order_complete', __CLASS__ . '::wp_ajax_mark_order_complete' );
 	}
 	
@@ -328,6 +329,28 @@ class WC_FedEx_Shipping_Labels {
 			}
 		}
 		wp_send_json( false );
+		wp_die();
+	}
+	
+	
+	public static function wp_ajax_get_label_print_commands() {
+		$printCommands = "";
+		$order_ids = explode(',', $_POST['order_ids'] );
+		if ( count($order_ids) > 0 ) {
+	    foreach ($order_ids as $order_id) {
+	    	$meta = get_post_meta( $order_id );
+	    	if ( empty($meta['shipping_label_data'][0]) ) {
+	    		wp_send_json( array( 'error' => 'Shipping label was empty for order: ' . $order->ID ) );
+					wp_die();
+	    	}
+	    	$printCommands .= $meta['shipping_label_data'][0];
+	    }
+		}
+		else {
+			wp_send_json( array( 'error' => 'Order Ids was blank' ) );
+			wp_die();
+		}
+		wp_send_json( array( 'print_commands' => $printCommands ) );
 		wp_die();
 	}
 	

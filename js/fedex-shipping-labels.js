@@ -50,7 +50,38 @@ jQuery(document).ready( function() {
   // printing the label handler
   jQuery('#print-shipping-labels').click( function(e) {
     e.preventDefault();
+    orderIds = new Array();
+    jQuery('input[name="order[]"]:checked').each( function() {
+      orderIds.push( jQuery(this).val() );
+    });
+    
+    if ( orderIds.length < 1 ) {
+      alert('No orders were checked');
+      return;
+    }
+    
     statusModal.show('Printing shipping labels...');
+    
+    var data = {
+      action: 'get_label_print_commands',
+      order_ids: orderIds.join(',')
+    };
+    
+    jQuery.post(wcfsl.ajaxurl, data, function( response ) {
+      if (response.error) {
+        alert('Error: ' + response.error);
+        statusModal.close();
+      }
+      else if (response.print_commands) {
+        statusModal.addText('sending commands to printer...');
+        jQuery.post('http://localhost:8080/print', { data: response.print_commands }, function( response ) {
+          statusModal.addText('done! Closing modal');
+          setTimeout( function() {
+            statusModal.close();
+          }, 1000);
+        });
+      }
+    });
   });
   
   
