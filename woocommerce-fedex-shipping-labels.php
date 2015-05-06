@@ -77,6 +77,7 @@ class WC_FedEx_Shipping_Labels {
 		add_action( 'woocommerce_order_action_send_shipping_address_changed_email', __CLASS__ . '::order_action_send_shipping_address_changed_email' );
 		
 		add_action( 'wp_ajax_generate_shipping_label', __CLASS__ . '::wp_ajax_generate_shipping_label' );
+		add_action( 'wp_ajax_mark_order_complete', __CLASS__ . '::wp_ajax_mark_order_complete' );
 	}
 	
 	
@@ -318,14 +319,25 @@ class WC_FedEx_Shipping_Labels {
 	
 	
 	public static function wp_ajax_generate_shipping_label() {
-		error_log($_POST['order_id']);
-		$order = new WC_Order( $_POST['order_id'] );
+		$order = wc_get_order( $_POST['order_id'] );
 		if ( $order ) {
 			$order_label = new WC_Order_Shipping_Label( $order );
 			if ( $order_label->generate_label() ) {
 				wp_send_json( true );
 				wp_die();
 			}
+		}
+		wp_send_json( false );
+		wp_die();
+	}
+	
+	
+	public static function wp_ajax_mark_order_complete() {
+		$order = wc_get_order( $_POST['order_id'] );
+		if ( $order ) {
+			$order->update_status( 'completed', 'Order completed from FedEx Shipping' );
+			wp_send_json( true );
+			wp_die();
 		}
 		wp_send_json( false );
 		wp_die();

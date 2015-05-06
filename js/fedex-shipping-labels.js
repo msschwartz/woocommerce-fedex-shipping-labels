@@ -19,6 +19,7 @@ jQuery(document).ready( function() {
   });
   
   
+  // Generate shipping labels handler
   jQuery('#generate-shipping-labels').click( function(e) {
     e.preventDefault();
     orderIds = new Array();
@@ -32,55 +33,90 @@ jQuery(document).ready( function() {
     }
     
     statusModal.show('Generating shipping labels. Please wait...');
-    labelGenerator.init( orderIds, function() {
-      statusModal.addText('done! Reloading page');
-      location.reload();
+    awesomeAjaxWorker.init({
+      queueName: 'generateLabels',
+      ajaxAction: 'generate_shipping_label',
+      sequentialWorkers: 3,
+      orderIds: orderIds,
+      callback: function() {
+        statusModal.addText('done! Reloading page');
+        location.reload();
+      }
     });
-    labelGenerator.doit();
+    awesomeAjaxWorker.doit();
   });
   
+  
+  // printing the label handler
   jQuery('#print-shipping-labels').click( function(e) {
     e.preventDefault();
     statusModal.show('Printing shipping labels...');
   });
   
+  
+  // Mark orders complete handler
   jQuery('#mark-orders-complete').click( function(e) {
     e.preventDefault();
+    orderIds = new Array();
+    jQuery('input[name="order[]"]:checked').each( function() {
+      orderIds.push( jQuery(this).val() );
+    });
+    
+    if ( orderIds.length < 1 ) {
+      alert('No orders were checked');
+      return;
+    }
+    
     statusModal.show('Marking orders complete...');
+    awesomeAjaxWorker.init({
+      queueName: 'markOrdersComplete',
+      ajaxAction: 'mark_order_complete',
+      sequentialWorkers: 5,
+      orderIds: orderIds,
+      callback: function() {
+        statusModal.addText('done! Reloading page');
+        location.reload();
+      }
+    });
+    awesomeAjaxWorker.doit();
   });
   
 });
 
 
-var labelGenerator = {
+var awesomeAjaxWorker = {
   
-  queueName: 'generateLabels',
-  ajaxAction: 'generate_shipping_label',
-  isBusy: false,
-  orderIds: [],
-  completedJobsCounter: 0,
-  sequentialWorkers: 3, // how many workers do we use
+  queueName: null,
+  ajaxAction: null,
+  sequentialWorkers: null, // how many concurrent workers
+  orderIds: null,
   callback: null,
   
-  init: function(orderIds, callback) {
+  _isBusy: false,
+  _completedJobsCounter: 0,
+  
+  init: function(options) {
     if (this.isBusy) return;
-    this.orderIds = orderIds;
-    this.callback = callback;
+    this.queueName = options.queueName;
+    this.ajaxAction = options.ajaxAction;
+    this.sequentialWorkers = options.sequentialWorkers;
+    this.orderIds = options.orderIds;
+    this.callback = options.callback;
   },
   
   doit: function() {
-    if (this.isBusy) return;
+    if (this._isBusy) return;
     if ( this.orderIds.length < 1 ) {
-      this.__doCallback();
+      this._doCallback();
       return;
     }
     
-    this.isBusy = true;
-    this.completedJobsCounter = 0;
+    this._isBusy = true;
+    this._completedJobsCounter = 0;
     
     // add all jobs
     for (var i = 0; i < this.orderIds.length; i++) {
-      this.__addJob(this.orderIds[i]);
+      this._addJob(this.orderIds[i]);
     }
     
     // start queue processing
@@ -89,7 +125,7 @@ var labelGenerator = {
     }
   },
   
-  __addJob: function(orderId) {
+  _addJob: function(orderId) {
     var THIS = this;
     var data = {
       action: this.ajaxAction,
@@ -97,31 +133,32 @@ var labelGenerator = {
     };
     jQuery(document).queue(this.queueName, function() {
       jQuery.post(wcfsl.ajaxurl, data, function( response ) {
-        THIS.__jobCompleted(response);
+        THIS._jobCompleted(response);
       });
     });
   },
   
   
-  __jobCompleted: function(response) {
+  _jobCompleted: function(response) {
     statusModal.addText('.');
-    this.completedJobsCounter++;
+    this._completedJobsCounter++;
     if ( jQuery(document).queue(this.queueName).length > 0 ) {
       jQuery(document).dequeue(this.queueName);
     }
-    else if (this.completedJobsCounter == this.orderIds.length) {
-      this.__doCallback();
-      this.isBusy = false;
+    else if (this._completedJobsCounter == this.orderIds.length) {
+      this._doCallback();
+      this._isBusy = false;
     }
   },
   
-  __doCallback: function() {
+  _doCallback: function() {
     if (this.callback) {
       this.callback();
     }
   },
   
 };
+
 
 
 var statusModal = {

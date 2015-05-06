@@ -14,10 +14,16 @@
       <strong>Filters</strong>
       <input type="text" name="start_date" autocomplete="off" placeholder="Start date" value="<?php echo $_GET['start_date'] ?>" />
       <input type="text" name="end_date" autocomplete="off" placeholder="End date" value="<?php echo $_GET['end_date'] ?>" />
-      <select name="item_count">
-        <option value="">-- Item Count --</option>
-        <option value="single" <?php echo ( $_GET['item_count'] == 'single' ? 'selected="selected"' : ''); ?>>1</option>
-        <option value="multiple" <?php echo ( $_GET['item_count'] == 'multiple' ? 'selected="selected"' : ''); ?>>2+</option>
+      <select name="product_id">
+        <option value="">-- Product --</option>
+        <?php foreach ($products as $product) : ?>
+          <option value="<?php echo $product->ID; ?>" <?php echo ( $_GET['product_id'] == $product->ID ? 'selected="selected"' : ''); ?>><?php echo $product->post_title; ?></option>
+        <?php endforeach; ?>
+      </select>
+      <select name="quantity">
+        <option value="">-- Quantity --</option>
+        <option value="single" <?php echo ( $_GET['quantity'] == 'single' ? 'selected="selected"' : ''); ?>>1</option>
+        <option value="multiple" <?php echo ( $_GET['quantity'] == 'multiple' ? 'selected="selected"' : ''); ?>>2+</option>
       </select>
       <input type="submit" class="button" value="Filter">
     </div>
@@ -27,13 +33,14 @@
       <div style="float:right">
         <strong>Printer Status: </strong><em id="printer_status">checking...</em>
       </div>
-      <strong>Pending Orders</strong> (<?php echo count($orders); ?>)<br />
+      <strong>Pending Orders (<?php echo count($orders); ?>)</strong><br />
       <table class="widefat fixed" cellspacing="0">
         <thead>
           <tr>
             <th id="cb" class="manage-column column-cb check-column" scope="col"><input type="checkbox" name="checkall" /></th>
             <th id="columnname" class="manage-column column-columnname" scope="col">Order</th>
-            <th id="columnname" class="manage-column column-columnname" scope="col">Item Count</th>
+            <th id="columnname" class="manage-column column-columnname" scope="col">Product</th>
+            <th id="columnname" class="manage-column column-columnname" scope="col">Quantity</th>
             <th id="columnname" class="manage-column column-columnname" scope="col">Name</th>
             <th id="columnname" class="manage-column column-columnname" scope="col">Address</th>
             <th id="columnname" class="manage-column column-columnname" scope="col">Date</th>
@@ -42,11 +49,30 @@
         </thead>
         
         <tbody>
-            
+        
           <?php if ( count( $orders ) > 0 ) : ?>
             <?php $counter = 0; ?>
-            <?php foreach ($orders as $order) : ?>
-              <?php $meta = get_post_meta( $order->ID ); ?>
+            <?php foreach ($orders as $order) :
+                $wc_order = wc_get_order( $order->ID );
+                $item = array_pop( $wc_order->get_items() );
+                $meta = get_post_meta( $order->ID );
+                
+                // filter product_id and quantity here... (query was too messy)
+                if ( !empty($_GET['product_id']) ) {
+                  if ( $item['product_id'] != $_GET['product_id'] ) {
+                    continue;
+                  }
+                }
+                if ( !empty($_GET['quantity']) ) {
+                  if( $_GET['quantity'] == 'single' && $item['qty'] > 1 ) {
+                    continue;
+                  }
+                  if( $_GET['quantity'] == 'multiple' && $item['qty'] < 2 ) {
+                    continue;
+                  }
+                }
+              ?>
+              
               <tr class="<?php echo ($counter % 2 == 0 ? 'alternate' : ''); ?>" data-row-order-id="<?php echo $order->ID; ?>">
                 <th class="check-column" scope="row"><input type="checkbox" name="order[]" value="<?php echo $order->ID; ?>" /></th>
                 <td class="column-columnname">
@@ -54,8 +80,12 @@
                   <a href="post.php?post=<?php echo $order->ID; ?>&action=edit" target="_blank">#<?php echo $order->ID; ?></a>
                 </td>
                 <td class="column-columnname">
+                  <!-- Product -->
+                  <?php echo $item['name']; ?>
+                </td>
+                <td class="column-columnname">
                   <!-- Item Count -->
-                  1 Item
+                  <?php echo $item['qty']; ?>
                 </td>
                 <td class="column-columnname">
                   <!-- Name -->

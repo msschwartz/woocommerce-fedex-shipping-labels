@@ -31,11 +31,17 @@ class WC_FedEx_Shipping_Labels_Admin {
   
   public function admin_page_template() {
     
+    // grab available products
+    $args = array(
+      'numberposts' => -1,
+      'post_type' => 'product',
+    );
+    $products = get_posts( $args );
+    
   	// prepare orders
     if ( isset($_GET['start_date']) && isset($_GET['end_date']) ) {
       $start_date = date_parse($_GET['start_date']);
       $end_date = date_parse($_GET['end_date']);
-      $item_count = $_GET['item_count'];
     
     	$args = array(
   			'numberposts' => -1,
