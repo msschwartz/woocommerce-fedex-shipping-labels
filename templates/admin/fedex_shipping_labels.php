@@ -27,7 +27,7 @@
       <div style="float:right">
         <strong>Printer Status: </strong><em id="printer_status">checking...</em>
       </div>
-      <strong>Pending Orders</strong><br />
+      <strong>Pending Orders</strong> (<?php echo count($orders); ?>)<br />
       <table class="widefat fixed" cellspacing="0">
         <thead>
           <tr>
