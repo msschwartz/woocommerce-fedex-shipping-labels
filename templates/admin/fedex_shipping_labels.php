@@ -89,12 +89,12 @@
                 </td>
                 <td class="column-columnname">
                   <!-- Name -->
-                  <?php echo $meta['_shipping_first_name'][0] . ' ' . $meta['_shipping_last_name'][0] ?>
+                  <?php echo $wc_order->shipping_first_name . ' ' . $wc_order->shipping_last_name ?>
                 </td>
                 <td class="column-columnname">
                   <!-- Address -->
-                  <?php echo $meta['_shipping_address_1'][0] . ' ' . $meta['_shipping_address_2'][0] ?><br />
-                  <?php echo $meta['_shipping_city'][0] . ', ' . $meta['_shipping_state'][0] . $meta['_shipping_postcode'][0] ?>
+                  <?php echo $wc_order->shipping_address_1 . ' ' . $wc_order->shipping_address_2 ?><br />
+                  <?php echo $wc_order->shipping_city . ', ' . $wc_order->shipping_state . ' ' . $wc_order->shipping_postcode ?>
                 </td>
                 <td class="column-columnname">
                   <!-- Order Date -->
@@ -123,5 +123,7 @@
     </div>
     
   </form>
+  
+  <p><a href="<?php echo WCFSL_BASE_URL . 'ws-zebra-printer.jar'; ?>">Download Printer Service</a>
   
 </div>
