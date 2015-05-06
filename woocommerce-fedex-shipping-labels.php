@@ -182,7 +182,7 @@ class WC_FedEx_Shipping_Labels {
     $mail = $mails['WC_Shipping_Address_Changed_Email'];
     $mail->trigger( $order );
 	}
-	
+		
 	
 }
 

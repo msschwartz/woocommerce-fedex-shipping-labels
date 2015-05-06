@@ -2,39 +2,6 @@
 
 class FedEx_Shipping_Label_Service {
 
-	const WSDL_PRODUCTION = 'ShipService_v15.prod.wsdl';
-	const WSDL_TESTING = 'ShipService_v15.test.wsdl';
-	const DROP_OFF_TYPE = 'REGULAR_PICKUP'; 
-	const SERVICE_TYPE = 'SMART_POST';
-	const PACKAGING_TYPE = 'YOUR_PACKAGING';
-
-	private $wsdl;
-	private $api_key;
-	private $api_password;
-	private $api_meter_number;
-	private $api_account_number;
-	private $hub_id;
-
-	function __construct() {
-		// Load the settings.
-		$this->init_settings();
-	}
-
-	private function init_settings() {
-		if ( ENVIRONMENT == 'production' ) {
-			$this->wsdl = self::WSDL_PRODUCTION;
-		}
-		else {
-			$this->wsdl = self::WSDL_TESTING;
-		}
-		
-		$this->api_key = FEDEX_API_KEY;
-		$this->api_password = FEDEX_API_PASSWORD;
-		$this->api_meter_number = FEDEX_METER_NUMBER;
-		$this->api_account_number = FEDEX_ACCOUNT_NUMBER;
-		$this->hub_id = FEDEX_SMART_POST_HUB_ID;
-	}
-
 	/*
 	 * Main method for generating the shipping label.
 	 *
@@ -48,90 +15,80 @@ class FedEx_Shipping_Label_Service {
 	 * )
 	 */
 	public function generate_label($order) {
+		set_time_limit(30); // prevent timeout in batch processing
 		ini_set("soap.wsdl_cache_enabled", "0");
 		try {
-			$client = new SoapClient( __DIR__ . '/' . $this->wsdl );
-
-			// for each item, create label
-			$label_data = '';
-			$tracking_number = null;
-			$number_of_packages = $order->get_item_count();
-			$item_counter = 1;
-			$items = $order->get_items();
-
-			// iterate over all order items
-			foreach($items as $item) {
-				// some items can have multiple quantities
-				if ( ! empty( $item['qty'] ) ) {
-					$item_qty = $item['qty'];
-				}
-				else {
-					$item_qty = 1;
-				}
-
-				// get product for this order item
-				$product = get_product( $item['variation_id'] ? $item['variation_id'] : $item['product_id'] );
-
-				// print labels for all items 
-				for($i = 0; $i < $item_qty; $i++) {
-					set_time_limit(30);
-					
-					// creating request object for this item
-					$request = $this->create_request($order, $product);
-					
-					// send request object to FedEx web service
-					$response = $client->processShipment( $request );
-					
-					// was request successful?
-					if ($response->HighestSeverity != 'FAILURE' && $response->HighestSeverity != 'ERROR') {
-						// if this is the first item, save tracking number
-						if ($item_counter == 1) {
-							$tracking_number = $this->get_ground_tracking_number($response->CompletedShipmentDetail->CompletedPackageDetails->TrackingIds);
-						}
-
-						// append this label to the all labels data string
-						$label_data .= $response->CompletedShipmentDetail->CompletedPackageDetails->Label->Parts->Image;
-						$label_data .= "\n";
-					}
-					else {
-						$this->write_to_log('Unable to generate label: ' . "\n" . print_r( $response->Notifications, true ) );
-						return array('error' => $this->get_error_messages( $response->Notifications ) );
-					}
-
-					$item_counter++;
-				}
+			$client = new SoapClient( $this->wsdl_path() );
+			
+			// creating request object for this item
+			$request = $this->create_request( $order );
+			
+			// send request object to FedEx web service
+			$response = $client->processShipment( $request );
+			
+			// was request successful?
+			if ($response->HighestSeverity != 'FAILURE' && $response->HighestSeverity != 'ERROR') {
+								
+				return array(
+					'label_data' => $response->CompletedShipmentDetail->CompletedPackageDetails->Label->Parts->Image,
+					'tracking_number' => $this->get_ground_tracking_number($response->CompletedShipmentDetail->CompletedPackageDetails->TrackingIds)
+				);
+				
 			}
-
-			// successful generation
-			return array(
-				'label_data' => $label_data,
-				'tracking_number' => $tracking_number
-			);
+			else {
+				
+				$this->write_to_log('Unable to generate label: ' . "\n" . print_r( $response->Notifications, true ) );
+				return array(
+					'error' => $this->get_error_messages( $response->Notifications ) 
+				);
+				
+			}
 		}
 		catch (SoapFault $exception) {
+			
 			$this->write_to_log( 'SoapFault: ' . $exception->getMessage() );
-			return array('error' => 'SoapFault: ' . $exception->getMessage());
+			return array(
+				'error' => 'SoapFault: ' . $exception->getMessage()
+			);
+			
 		}
 		catch (Exception $exception) {
+			
 			$this->write_to_log( $exception->getMessage() );
-			return array('error' => 'Exception: ' . $exception->getMessage());
+			return array(
+				'error' => 'Exception: ' . $exception->getMessage()
+			);
+			
 		}
 	}
+	
+	
+	
+	private function wsdl_path() {
+		if ( ENVIRONMENT == 'production' ) {
+			return __DIR__ . '/' . 'ShipService_v15.prod.wsdl';
+		}
+		else {
+			return __DIR__ . '/' . 'ShipService_v15.test.wsdl';
+		}
+	}
+	
+
 
 	/*
 	 * Create the soap request element
 	 */
-	private function create_request($order, $product) {
+	private function create_request($order) {
 		$request = array();
 		$request['WebAuthenticationDetail'] = array(
 			'UserCredential' =>array(
-				'Key' => $this->api_key, 
-				'Password' => $this->api_password
+				'Key' => FEDEX_API_KEY, 
+				'Password' => FEDEX_API_PASSWORD
 			)
 		);
 		$request['ClientDetail'] = array(
-			'AccountNumber' => $this->api_account_number, 
-			'MeterNumber' => $this->api_meter_number
+			'AccountNumber' => FEDEX_ACCOUNT_NUMBER, 
+			'MeterNumber' => FEDEX_METER_NUMBER
 		);
 		$request['TransactionDetail'] = array('CustomerTransactionId' => '*** Ground Domestic Shipping Request using PHP ***');
 		$request['Version'] = array(
@@ -142,24 +99,38 @@ class FedEx_Shipping_Label_Service {
 		);
 		$request['RequestedShipment'] = array(
 			'ShipTimestamp' => date('c'),
-			'DropoffType' => self::DROP_OFF_TYPE, 
-			'ServiceType' => self::SERVICE_TYPE, 
-			'PackagingType' => self::PACKAGING_TYPE,
+			'DropoffType' => 'REGULAR_PICKUP', 
+			'ServiceType' => $this->service_type( $order ), 
+			'PackagingType' => 'YOUR_PACKAGING',
 			'Shipper' => $this->get_shipper(),
 			'Recipient' => $this->get_recipient( $order ),
 			'ShippingChargesPayment' => $this->get_shipping_charges_payment(),
-			'SmartPostDetail' => $this->get_smart_post_detail(),
 			'LabelSpecification' => $this->get_label_specification(), 
 			'RateRequestTypes' => array('ACCOUNT'), 
-			'PackageCount' => 1, // force single package for smartpost
-			'PackageDetail' => 'INDIVIDUAL_PACKAGES',                                        
+			'PackageCount' => 1,
+			'PackageDetail' => 'INDIVIDUAL_PACKAGES',
 			'RequestedPackageLineItems' => array(
-				'0' => $this->get_package_line_item( $order, $product )
+				'0' => $this->get_package_line_item( $order )
 			)
 		);
+		
+		if ( $request['RequestedShipment']['ServiceType'] == 'SMART_POST' ) {
+			$request['RequestedShipment']['SmartPostDetail'] = $this->get_smart_post_detail();
+		}
 
 		return $request;
 	}
+	
+	
+	private function service_type( $order ) {
+		if ( $order->get_item_count() == 1 ) {
+			return 'SMART_POST';
+		}
+		else {
+			return 'GROUND_HOME_DELIVERY';
+		}
+	}
+	
 
 	/*
 	 * Grab shipper info from settings
@@ -212,7 +183,7 @@ class FedEx_Shipping_Label_Service {
 			'PaymentType' => 'SENDER',
 			'Payor' => array(
 				'ResponsibleParty' => array(
-					'AccountNumber' => $this->api_account_number,
+					'AccountNumber' => FEDEX_ACCOUNT_NUMBER,
 					'Contact' => null,
 					'Address' => array(
 						'CountryCode' => 'US'
@@ -228,9 +199,7 @@ class FedEx_Shipping_Label_Service {
 	private function get_smart_post_detail() {
 		$smartPostDetail = array(
 			'Indicia' => 'PARCEL_SELECT',
-			'AncillaryEndorsement' => 'CARRIER_LEAVE_IF_NO_RESPONSE',
-			'SpecialServices' => 'USPS_DELIVERY_CONFIRMATION',
-			'HubId' => $this->hub_id
+			'HubId' => FEDEX_SMART_POST_HUB_ID
 		);
 		return $smartPostDetail;
 	}
@@ -251,29 +220,19 @@ class FedEx_Shipping_Label_Service {
 	/*
 	 * Return the configured shipping box.
 	 */
-	private function get_package_line_item($order, $product) {
-		$product_weight = $product->get_weight();
-		if ( empty($product_weight) || empty($product->length) || empty($product->width) || empty($product->height) ) {
-			throw new Exception("product is missing shipping information");
-		}
-
+	private function get_package_line_item( $order ) {
+		$quantity = $order->get_item_count();
 		$packageLineItem = array(
 			'SequenceNumber' => 1,
 			'GroupPackageCount' => 1,
 			'Weight' => array(
-				'Value' => $product->get_weight(),
+				'Value' => CRATE_WEIGHT * $quantity,
 				'Units' => 'LB'
-			),
-			'Dimensions' => array(
-				'Length' => $product->length,
-				'Width' => $product->width,
-				'Height' => $product->height,
-				'Units' => 'IN'
 			),
 			'CustomerReferences' => array(
 				'0' => array(
 					'CustomerReferenceType' => 'INVOICE_NUMBER', 
-					'Value' => $order->id
+					'Value' => $order->id . '-' . 'QTY' . $quantity
 				)
 			),
 			'SpecialServicesRequested' => array()
@@ -284,8 +243,11 @@ class FedEx_Shipping_Label_Service {
 	
 	// grab ground tracking number from tracking ids
 	private function get_ground_tracking_number($trackingIds) {
-		foreach ($trackingIds as $key => $value) {
-			if ($value->TrackingIdType == "GROUND") {
+		if ( ! is_array( $trackingIds ) ) {
+			$trackingIds = array( $trackingIds );
+		}
+		foreach ( $trackingIds as $key => $value ) {
+			if ( $value->TrackingIdType == "GROUND" || $value->TrackingIdType == "FEDEX" ) {
 				return $value->TrackingNumber;
 			}
 		}
