@@ -5,7 +5,7 @@
  * Description: Print FedEx shipping labels for orders.
  * Author: Michael Schwartz
  * Author URI: #
- * Version: 2.0.0
+ * Version: 3.0
  */
 
 // Define some constants
@@ -38,7 +38,7 @@ class WC_FedEx_Shipping_Labels {
 
 	public static $plugin_file = __FILE__;
 
-	public static $version = '1.0.0';
+	public static $version = '3.0';
 
 
 	/**
@@ -46,13 +46,7 @@ class WC_FedEx_Shipping_Labels {
 	 */
 	public static function init() {
 		$wcFedexShippingLabelsAdmin = new WC_FedEx_Shipping_Labels_Admin();
-		
-		add_action( 'admin_enqueue_scripts', __CLASS__ . '::admin_enqueue_scripts' );
-		add_action( 'admin_footer', __CLASS__ . '::woocommerce_bulk_admin_footer' );
-		add_action( 'load-edit.php', __CLASS__ . '::woocommerce_order_bulk_action_download' );
-		add_action( 'load-edit.php', __CLASS__ . '::woocommerce_order_bulk_action_generate' );
-		add_action( 'admin_notices', __CLASS__ . '::woocommerce_order_bulk_admin_notices' );
-		
+				
 		// add tracking number to email
 		add_action( 'woocommerce_email_after_order_table', __CLASS__ . '::woocommerce_email_after_order_table' );
 		
@@ -75,134 +69,6 @@ class WC_FedEx_Shipping_Labels {
 		// custom shipping address changed email
 		add_filter( 'woocommerce_email_classes', __CLASS__ . '::add_wc_shipping_address_changed_email' );
 		add_action( 'woocommerce_order_action_send_shipping_address_changed_email', __CLASS__ . '::order_action_send_shipping_address_changed_email' );
-		
-		add_action( 'wp_ajax_generate_shipping_label', __CLASS__ . '::wp_ajax_generate_shipping_label' );
-		add_action( 'wp_ajax_get_label_print_commands', __CLASS__ . '::wp_ajax_get_label_print_commands' );
-		add_action( 'wp_ajax_mark_order_complete', __CLASS__ . '::wp_ajax_mark_order_complete' );
-	}
-	
-	
-	public static function admin_enqueue_scripts() {
-		wp_enqueue_style( __CLASS__ . '::name' . '-css', WCFSL_BASE_URL . '/css/fedex-shipping-labels.css' );
-	}
-
-
-	/**
-	 * Add extra bulk action options to mark orders as complete or processing
-	 *
-	 * Using Javascript until WordPress core fixes: http://core.trac.wordpress.org/ticket/16031
-	 *
-	 * @access public
-	 * @return void
-	 */
-	public static function woocommerce_bulk_admin_footer() {
-		global $post_type;
-
-		if ( 'shop_order' == $post_type ) {
-			?>
-			<script type="text/javascript">
-			jQuery(document).ready(function() {
-				jQuery('<option>').val('print_shipping_labels').text('Download Shipping Labels').appendTo("select[name='action']");
-				jQuery('<option>').val('print_shipping_labels').text('Download Shipping Labels').appendTo("select[name='action2']");
-				jQuery('<option>').val('regenerate_shipping_labels').text('Generate Shipping Labels').appendTo("select[name='action']");
-				jQuery('<option>').val('regenerate_shipping_labels').text('Generate Shipping Labels').appendTo("select[name='action2']");
-			});
-			</script>
-			<?php
-		}
-	}
-
-	/**
-	 * Process the bulk actions for order label printing
-	 *
-	 * @access public
-	 * @return void
-	 */
-	public static function woocommerce_order_bulk_action_download() {
-		$wp_list_table = _get_list_table( 'WP_Posts_List_Table' );
-		$action = $wp_list_table->current_action();
-
-		// only continue if the action is print_shipping_labels
-		if ( $action != 'print_shipping_labels' ) {
-			return;
-		}
-
-		$post_ids = array_map( 'absint', (array) $_REQUEST['post'] );
-
-		$count = 0;
-		$all_labels_data = '';
-
-		foreach( $post_ids as $post_id ) {
-			$order = new WC_Order( $post_id );
-			$order_label = new WC_Order_Shipping_Label( $order );
-			$label_data = $order_label->shipping_label_data();
-			if ( empty ( $label_data ) ) {
-				echo "Order #{$order->id} has no label. {$order_label->shipping_label_error()}";
-				exit();
-			}
-			$all_labels_data .= $label_data;
-		}
-		
-		if ( empty ( $all_labels_data ) ) {
-			echo 'No shipping labels were generated!';
-			exit();
-		}
-
-		header("Content-Type: application/octet-stream");
-		header("Content-Disposition: attachment; filename=labels.zpl");
-		echo $all_labels_data;
-		exit();
-	}
-
-	/**
-	 * Process the bulk actions for regenerating shipping labels
-	 *
-	 * @access public
-	 * @return void
-	 */
-	public static function woocommerce_order_bulk_action_generate() {
-		$wp_list_table = _get_list_table( 'WP_Posts_List_Table' );
-		$action = $wp_list_table->current_action();
-
-		// only continue if the action is print_shipping_labels
-		if ( $action != 'regenerate_shipping_labels' ) {
-			return;
-		}
-
-		$post_ids = array_map( 'absint', (array) $_REQUEST['post'] );
-		$errors = array();
-
-		foreach( $post_ids as $post_id ) {
-			$order = new WC_Order( $post_id );
-			$order_label = new WC_Order_Shipping_Label( $order );
-			if ( $order_label->generate_label() ) {
-				// GOOD
-			}
-			else {
-				$errors[] = "#{$order->id} failed ({$order_label->shipping_label_error()})";
-			}
-		}
-		
-		if (empty($errors)) {
-			$message = "Generated labels with no errors!";
-		}
-		else {
-			$message = "Some labels failed to generate: " . implode(', ', $errors);
-		}
-
-		$sendback = add_query_arg( array( 'post_type' => 'shop_order', 'shipping_label_message' => urlencode( $message ) ), '' );
-		wp_redirect( $sendback );
-		exit;
-	}
-
-	public static function woocommerce_order_bulk_admin_notices() {
-		global $post_type, $pagenow;
-
-		if ( isset( $_REQUEST['shipping_label_message'] ) ) {
-			if ( 'edit.php' == $pagenow && 'shop_order' == $post_type ) {
-				echo '<div class="updated"><p>' . $_REQUEST['shipping_label_message'] . '</p></div>';
-			}
-		}
 	}
 	
 	
@@ -315,55 +181,6 @@ class WC_FedEx_Shipping_Labels {
 		$mails = $mailer->get_emails();
     $mail = $mails['WC_Shipping_Address_Changed_Email'];
     $mail->trigger( $order );
-	}
-	
-	
-	
-	public static function wp_ajax_generate_shipping_label() {
-		$order = wc_get_order( $_POST['order_id'] );
-		if ( $order ) {
-			$order_label = new WC_Order_Shipping_Label( $order );
-			if ( $order_label->generate_label() ) {
-				wp_send_json( true );
-				wp_die();
-			}
-		}
-		wp_send_json( false );
-		wp_die();
-	}
-	
-	
-	public static function wp_ajax_get_label_print_commands() {
-		$printCommands = "";
-		$order_ids = explode(',', $_POST['order_ids'] );
-		if ( count($order_ids) > 0 ) {
-	    foreach ($order_ids as $order_id) {
-	    	$meta = get_post_meta( $order_id );
-	    	if ( empty($meta['shipping_label_data'][0]) ) {
-	    		wp_send_json( array( 'error' => 'Shipping label was empty for order: ' . $order->ID ) );
-					wp_die();
-	    	}
-	    	$printCommands .= $meta['shipping_label_data'][0];
-	    }
-		}
-		else {
-			wp_send_json( array( 'error' => 'Order Ids was blank' ) );
-			wp_die();
-		}
-		wp_send_json( array( 'print_commands' => $printCommands ) );
-		wp_die();
-	}
-	
-	
-	public static function wp_ajax_mark_order_complete() {
-		$order = wc_get_order( $_POST['order_id'] );
-		if ( $order ) {
-			$order->update_status( 'completed', 'Order completed from FedEx Shipping' );
-			wp_send_json( true );
-			wp_die();
-		}
-		wp_send_json( false );
-		wp_die();
 	}
 	
 	
