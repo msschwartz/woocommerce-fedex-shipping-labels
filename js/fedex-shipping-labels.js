@@ -12,11 +12,9 @@ jQuery(document).ready( function() {
       }
       else {
         jQuery('#printer_status').html('Invalid Response');
-        alert( 'Received an invalid response from port 8080' );
       }
     }).fail(function() {
       jQuery('#printer_status').html('Not Ready');
-      alert( 'Printer service not found, please make sure it\'s running' );
     });
   }
   
@@ -51,6 +49,12 @@ jQuery(document).ready( function() {
   // printing the label handler
   jQuery('#print-shipping-labels').click( function(e) {
     e.preventDefault();
+    
+    if ( jQuery('#printer_status').html() != 'Ready' ) {
+      alert('Printer service not ready');
+      return;
+    }
+    
     orderIds = new Array();
     jQuery('input[name="order[]"]:checked').each( function() {
       orderIds.push( jQuery(this).val() );
