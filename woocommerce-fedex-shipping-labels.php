@@ -46,6 +46,8 @@ class WC_FedEx_Shipping_Labels {
 	 */
 	public static function init() {
 		$wcFedexShippingLabelsAdmin = new WC_FedEx_Shipping_Labels_Admin();
+		
+		add_filter( 'woocommerce_subscriptions_renewal_order_meta_query', __CLASS__ . '::woocommerce_subscriptions_renewal_order_meta_query', 10, 4 );
 				
 		// add tracking number to email
 		add_action( 'woocommerce_email_after_order_table', __CLASS__ . '::woocommerce_email_after_order_table' );
@@ -72,6 +74,13 @@ class WC_FedEx_Shipping_Labels {
 		// custom shipping address changed email
 		add_filter( 'woocommerce_email_classes', __CLASS__ . '::add_wc_shipping_address_changed_email' );
 		add_action( 'woocommerce_order_action_send_shipping_address_changed_email', __CLASS__ . '::order_action_send_shipping_address_changed_email' );
+	}
+	
+	
+	// prevent renewals from copying tracking information meta data
+	public static function woocommerce_subscriptions_renewal_order_meta_query( $order_meta_query, $original_order_id, $renewal_order_id, $new_order_role ) {
+		$order_meta_query .= " AND `meta_key` NOT IN ('shipping_label_data', 'shipping_label_error', 'tracking_number')";
+		return $order_meta_query;
 	}
 	
 	
