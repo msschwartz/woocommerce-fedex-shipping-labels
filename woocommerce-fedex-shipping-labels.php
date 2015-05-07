@@ -5,7 +5,7 @@
  * Description: Print FedEx shipping labels for orders.
  * Author: Michael Schwartz
  * Author URI: #
- * Version: 3.0
+ * Version: 3.1
  */
 
 // Define some constants
@@ -38,7 +38,7 @@ class WC_FedEx_Shipping_Labels {
 
 	public static $plugin_file = __FILE__;
 
-	public static $version = '3.0';
+	public static $version = '3.1';
 
 
 	/**

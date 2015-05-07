@@ -27,11 +27,11 @@ class WC_FedEx_Shipping_Labels_Admin {
   
   
   public function admin_enqueue_scripts() {
-    wp_enqueue_script( 'fedex-shipping-labels-js', WCFSL_BASE_URL . '/js/fedex-shipping-labels.js', array( 'jquery-ui-datepicker' ) );
+    wp_enqueue_script( 'fedex-shipping-labels-js', WCFSL_BASE_URL . '/js/fedex-shipping-labels.js', array( 'jquery-ui-datepicker' ), WC_FedEx_Shipping_Labels::$version );
     wp_localize_script( 'fedex-shipping-labels-js', 'wcfsl', array( 'ajaxurl' => admin_url( 'admin-ajax.php' ) ) );
     wp_enqueue_style( 'fedex-shipping-labels-jquery-ui', WCFSL_BASE_URL . '/css/jquery-ui/ui-lightness/jquery-ui.css' );
     wp_enqueue_style( 'fedex-shipping-labels-jquery-ui-theme', WCFSL_BASE_URL . '/css/jquery-ui/ui-lightness/theme.css' );
-    wp_enqueue_style( 'fedex-shipping-labels-css', WCFSL_BASE_URL . '/css/fedex-shipping-labels.css' );
+    wp_enqueue_style( 'fedex-shipping-labels-css', WCFSL_BASE_URL . '/css/fedex-shipping-labels.css', null, WC_FedEx_Shipping_Labels::$version );
   }
   
   
