@@ -54,7 +54,8 @@
             <?php $counter = 0; ?>
             <?php foreach ($orders as $order) :
                 $wc_order = wc_get_order( $order->ID );
-                $item = array_pop( $wc_order->get_items() );
+                $items = $wc_order->get_items();
+                $item = array_pop( $items );
                 $meta = get_post_meta( $order->ID );
                 
                 if ( ! empty( $meta['shipping_label_error'][0] ) ) {
