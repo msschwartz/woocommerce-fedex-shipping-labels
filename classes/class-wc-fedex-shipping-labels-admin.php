@@ -52,7 +52,7 @@ class WC_FedEx_Shipping_Labels_Admin {
     	$args = array(
   			'numberposts' => -1,
   			'post_type' => 'shop_order',
-  			'post_status' => 'publish',
+  			'post_status' => array( 'wc-processing' ),
   			'date_query' => array(
   				'after' => array(
   						'year'  => $start_date['year'],
@@ -65,12 +65,7 @@ class WC_FedEx_Shipping_Labels_Admin {
   						'day'   => $end_date['day']
   				),
   				'inclusive' => true,
-  			),
-  			'tax_query'=>array(array(
-  				'taxonomy' => 'shop_order_status',
-  				'field' => 'slug',
-  				'terms' => array('processing')
-  			))
+  			)
   		);
   		$orders = get_posts( $args );
     }
