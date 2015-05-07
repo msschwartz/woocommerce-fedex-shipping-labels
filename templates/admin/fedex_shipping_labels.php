@@ -57,6 +57,19 @@
                 $item = array_pop( $wc_order->get_items() );
                 $meta = get_post_meta( $order->ID );
                 
+                if ( ! empty( $meta['shipping_label_error'][0] ) ) {
+                  $label_status_css = 'error';
+                  $label_status_text = $meta['shipping_label_error'][0];
+                }
+                else if ( ! empty( $meta['tracking_number'][0] ) ) {
+                  $label_status_css = 'good';
+                  $label_status_text = 'generated';
+                }
+                else {
+                  $label_status_css = 'warning';
+                  $label_status_text = 'empty';
+                }
+                
                 // filter product_id and quantity here... (query was too messy)
                 if ( !empty($_GET['product_id']) ) {
                   if ( $item['product_id'] != $_GET['product_id'] ) {
@@ -102,8 +115,8 @@
                 </td>
                 <td class="column-columnname">
                   <!-- Label Status -->
-                  <span class="label-status label-status-<?php echo ( empty($meta['tracking_number'][0]) ? 'empty' : 'generated' ); ?>">
-                    <?php echo ( empty($meta['tracking_number'][0]) ? 'empty' : 'generated' ); ?>
+                  <span class="label-status label-status-<?php echo $label_status_css; ?>">
+                    <?php echo $label_status_text; ?>
                   </span>
                 </td>
               </tr>

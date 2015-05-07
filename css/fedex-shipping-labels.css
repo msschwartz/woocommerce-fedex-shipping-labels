@@ -10,11 +10,14 @@
   display: inline-block;
   padding: 5px 10px;
 } 
-.label-status.label-status-generated {
+.label-status.label-status-good {
   background-color: #88ff88;
 }
-.label-status.label-status-empty {
+.label-status.label-status-error {
   background-color: #ff8888;
+}
+.label-status.label-status-warning {
+  background-color: #ffdd55;
 }
 
 
