@@ -49,8 +49,9 @@ class WC_FedEx_Shipping_Labels {
 		
 		add_filter( 'woocommerce_subscriptions_renewal_order_meta_query', __CLASS__ . '::woocommerce_subscriptions_renewal_order_meta_query', 10, 4 );
 				
-		// add tracking number to email
+		// add tracking number to email and view order pages
 		add_action( 'woocommerce_email_after_order_table', __CLASS__ . '::woocommerce_email_after_order_table' );
+		add_action( 'woocommerce_view_order', __CLASS__ . '::show_tracking_number_on_view_order_page' );
 		
 		// adding message to edit address page
 		add_action( 'woocommerce_before_edit_address_form_shipping', __CLASS__ . '::woocommerce_before_edit_address_form_shipping' );
@@ -98,14 +99,33 @@ class WC_FedEx_Shipping_Labels {
 		if ( $order->status == 'completed' ) {
 			$order_label = new WC_Order_Shipping_Label( $order );
 			$tracking_number = $order_label->tracking_number();
-			$tracking_url = $order_label->track_package_link();
 			if ( ! empty( $tracking_number ) ) {
+				$tracking_url = $order_label->track_package_link();
 				echo '<h2>Tracking Information</h2>';
 				echo '<p><strong>Service: </strong>FedEx</p>';
 				echo '<p>';
 				echo '  <strong>Tracking Number: </strong>' . '<a href="' . $tracking_url . '">' . $tracking_number . '</a>';
 				echo '  <br />';
 				echo '  <i>*please allow 48 hours for this tracking number to be processed*</i>';
+				echo '</p>';
+			}
+		}
+	}
+	
+	
+	// Add tracking number to order completed customer email
+	public static function show_tracking_number_on_view_order_page( $order_id ) {
+		error_log("show_tracking_number_on_view_order_page");
+		$order = wc_get_order( $order_id );
+		if ( $order->status == 'completed' ) {
+			$order_label = new WC_Order_Shipping_Label( $order );
+			$tracking_number = $order_label->tracking_number();
+			if ( ! empty( $tracking_number ) ) {
+				$tracking_url = $order_label->track_package_link();
+				echo '<h2>Tracking Information</h2>';
+				echo '<p>';
+				echo '  <strong>Service: </strong>FedEx<br />';
+				echo '  <strong>Tracking Number: </strong>' . '<a href="' . $tracking_url . '">' . $tracking_number . '</a>';
 				echo '</p>';
 			}
 		}
