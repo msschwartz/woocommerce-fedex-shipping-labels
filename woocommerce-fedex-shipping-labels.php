@@ -50,7 +50,7 @@ class WC_FedEx_Shipping_Labels {
 		add_filter( 'woocommerce_subscriptions_renewal_order_meta_query', __CLASS__ . '::woocommerce_subscriptions_renewal_order_meta_query', 10, 4 );
 				
 		// add tracking number to email and view order pages
-		add_action( 'woocommerce_email_after_order_table', __CLASS__ . '::woocommerce_email_after_order_table' );
+		add_action( 'woocommerce_email_before_order_table', __CLASS__ . '::show_tracking_number_on_order_completed_email' );
 		add_action( 'woocommerce_view_order', __CLASS__ . '::show_tracking_number_on_view_order_page' );
 		
 		// adding message to edit address page
@@ -95,7 +95,7 @@ class WC_FedEx_Shipping_Labels {
 	
 	
 	// Add tracking number to order completed customer email
-	public static function woocommerce_email_after_order_table($order) {
+	public static function show_tracking_number_on_order_completed_email($order) {
 		if ( $order->status == 'completed' ) {
 			$order_label = new WC_Order_Shipping_Label( $order );
 			$tracking_number = $order_label->tracking_number();
